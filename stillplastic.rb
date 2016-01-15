@@ -4,19 +4,19 @@ require 'mongo'
 require 'sinatra'
 require 'json'
 require 'uuidtools'
- 
+
 configure do
 	db = Mongo::Client.new(['127.0.0.1:27017'], :database => 'data')
 	set :mongo_db, db[:data]
 end
- 
+
 def set_uuid()
 	uuid = UUIDTools::UUID.random_create
 	return uuid.to_s
 end
  
 helpers do
- 
+
 	def object_id val
 		begin
 			BSON::ObjectId.from_string(val)
@@ -73,7 +73,7 @@ helpers do
 			end
 		end
 	end
- 
+
 	def update_query params
 		id = params[:id]
 		request.params.keys.each do |k|
@@ -82,7 +82,7 @@ helpers do
 		profile_query(id)	
 	end
 end
- 
+
 get '/collections/?' do
 	content_type :json
 	settings.mongo_db.database.collection_names.to_json
@@ -92,7 +92,7 @@ get '/profiles/?' do
 	content_type :json
 	settings.mongo_db.find.to_a.to_json
 end
- 
+
 get '/profiles/:id/?' do
 	content_type :json
 	profile_query(params)
@@ -102,7 +102,7 @@ get '/search/?' do
 	content_type :json
 	search_query(params)
 end
- 
+
 post '/new_collection/:collection/?' do
 	content_type :json
 	#settings.mongo_db.create
