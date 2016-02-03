@@ -7,7 +7,7 @@ require 'uuidtools'
 
 configure do
 	db = Mongo::Client.new(['127.0.0.1:27017'], :database => 'data')
-	set :mongo_db, db[:data]
+	set :db, db
 end
 
 def set_uuid()
@@ -16,6 +16,10 @@ def set_uuid()
 end
  
 helpers do
+
+	def set_collection coll	
+		Sinatra::Base.set :mongo_db, settings.db[:"#{coll}"]				
+	end
 
 	def object_id val
 		begin
@@ -26,8 +30,6 @@ helpers do
 	end
 	
 	def profile_query params 
-		#params.delete("splat")
-		#params.delete("captures")
 		if params.nil?
 			{}.to_json
 		else
@@ -58,15 +60,14 @@ helpers do
 				fields.each do |val|
 					projection_s[:"#{val}"] = 1
 				end
-				params.delete("fields")
-				params.keys.each do |k|
-					document = settings.mongo_db.find({"#{k}" => /#{params[k]}/}).projection(projection_s).to_a
+				request.params.keys.each do |k|
+					document = settings.mongo_db.find({"#{k}" => /#{request.params[k]}/}).projection(projection_s).to_a
 					results.push(document)
 				end
 				results[0].to_json
 			else
-				params.keys.each do |k|
-					document = settings.mongo_db.find({ "#{k}" => /#{params[k]}/}).to_a
+				request.params.keys.each do |k|
+					document = settings.mongo_db.find({ "#{k}" => /#{request.params[k]}/}).to_a
 					results.push(document)
 				end
 				results[0].to_json	
@@ -79,54 +80,50 @@ helpers do
 		request.params.keys.each do |k|
 			settings.mongo_db.find(:id => id).update_one("$set" => { "#{k}" => "#{request.params[k]}"})
 		end
-		profile_query(id)	
+		settings.mongo_db.find(:id => id).to_a.to_json	
 	end
 end
 
+post '/:collection/new_record/?' do
+	content_type :json
+	set_collection(params[:collection])
+	db = settings.mongo_db
+	request.params[:id] = set_uuid()
+	result = db.insert_one request.params 
+	redirect "http://127.0.0.1:4567/"+ params[:collection]+"/" + request.params[:id] +"/"
+end
+ 
 get '/collections/?' do
 	content_type :json
-	settings.mongo_db.database.collection_names.to_json
-end
- 
-get '/profiles/?' do
-	content_type :json
-	settings.mongo_db.find.to_a.to_json
+	settings.db.database.collection_names.to_json
 end
 
-get '/profiles/:id/?' do
-	content_type :json
-	profile_query(params)
-end
+get '/:collection/' do	
+	set_collection(params[:collection])
+	settings.mongo_db.find.to_a.to_json
+end 
  
-get '/search/?' do
+get '/:collection/search/?' do
 	content_type :json
+	set_collection(params[:collection])
 	search_query(params)
 end
 
-post '/new_collection/:collection/?' do
+get '/:collection/:id/?' do
 	content_type :json
-	#settings.mongo_db.create
-	db = Mongo::Client.new([ '127.0.0.1:27017'], :database => 'data')
-	collection = db[:"#{params[:collection]}", :capped => false]
-	collection.create
-	db.database.collection_names.to_json
+	set_collection(params[:collection])
+	profile_query(params)
 end
- 
-post '/new_profile/?' do
+
+put '/:collection/update/:id/?' do
 	content_type :json
-	db = settings.mongo_db
-	params[:id] = set_uuid()
-	result = db.insert_one params 
-	redirect "http://127.0.0.1:4567/profiles/" + params[:id]
-end
- 
-put '/update/:id/?' do
-	content_type :json
+	set_collection(params[:collection])
 	update_query(params)
 end
  
-delete '/remove/:id/?' do
+delete '/:collection/remove/:id/' do
 	content_type :json
+	set_collection(params[:collection])
 	db = settings.mongo_db
 	id = params[:id]
 	documents = db.find(:id => id)
