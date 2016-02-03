@@ -12,7 +12,6 @@ end
 
 def set_uuid()
 	uuid = UUIDTools::UUID.random_create
-	return uuid.to_s
 end
  
 helpers do
@@ -25,7 +24,7 @@ helpers do
 				fields = Array(params[:fields].to_s.split(","))
 				projection_s = Hash.new
 				fields.each do |val|
-					projection_s[:"#{val}"] = 1
+					projection_s[val.to_sym] = 1
 				end
 				return projection_s	
 			else
@@ -37,14 +36,6 @@ helpers do
 	def set_collection coll	
 		Sinatra::Base.set :mongo_db, settings.db[:"#{coll}"]				
 	end
-
-	def object_id val
-		begin
-			BSON::ObjectId.from_string(val)
-		rescue BSON::ObjectId::Invalid
-			nil
-		end
-	end
 	
 	def profile_query params 
 		id = params[:id]
@@ -53,7 +44,8 @@ helpers do
 			document = settings.mongo_db.find(:id => id).to_a.first
 			(document || {}).to_json
 		else
-			document = settings.mongo_db.find(:id => id).projection(result).to_a.to_json
+			document = settings.mongo_db.find(:id => id).projection(result).to_a.first
+			(document || {}).to_json
 		end
 	end
  
@@ -72,7 +64,7 @@ helpers do
 				results.push(document)
 			end
 		end
-		results[0].to_json
+		(results[0].to_json || {}).to_json
 	end
 
 	def update_query params
@@ -91,7 +83,8 @@ end
 
 get '/collections/?' do
 	content_type :json
-	settings.db.database.collection_names.to_json
+	document = settings.db.database.collection_names.to_a
+	(document || {}).to_json
 end
 
 post '/:collection/new_record/?' do
@@ -104,7 +97,8 @@ post '/:collection/new_record/?' do
 end
 
 get '/:collection/' do	
-	settings.mongo_db.find.to_a.to_json
+	document = settings.mongo_db.find.to_a
+	(document || {}).to_json
 end 
 
 get '/:collection/search/?' do
