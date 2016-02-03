@@ -64,7 +64,7 @@ helpers do
 				results.push(document)
 			end
 		end
-		(results[0].to_json || {}).to_json
+		(results[0] || {}).to_json
 	end
 
 	def update_query params
@@ -72,7 +72,7 @@ helpers do
 		request.params.keys.each do |k|
 			settings.mongo_db.find(:id => id).update_one("$set" => { "#{k}" => "#{request.params[k]}"})
 		end
-		settings.mongo_db.find(:id => id).to_a.to_json	
+		settings.mongo_db.find(:id => id).to_a.to_json
 	end
 end
 
