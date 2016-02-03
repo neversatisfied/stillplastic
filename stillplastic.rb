@@ -16,6 +16,23 @@ def set_uuid()
 end
  
 helpers do
+	def fields_parse(params)
+		if params.nil?
+			{}.to_json
+		else
+			id = params[:id]
+			if params[:fields]
+				fields = Array(params[:fields].to_s.split(","))
+				projection_s = Hash.new
+				fields.each do |val|
+					projection_s[:"#{val}"] = 1
+				end
+				return projection_s	
+			else
+				return	
+			end
+		end
+	end
 
 	def set_collection coll	
 		Sinatra::Base.set :mongo_db, settings.db[:"#{coll}"]				
@@ -30,49 +47,32 @@ helpers do
 	end
 	
 	def profile_query params 
-		if params.nil?
-			{}.to_json
+		id = params[:id]
+		result = fields_parse(params)
+		if result.nil?
+			document = settings.mongo_db.find(:id => id).to_a.first
+			(document || {}).to_json
 		else
-			id = params[:id]
-			if params[:fields]
-				fields = Array(params[:fields].to_s.split(","))
-				projection_s = Hash.new
-				fields.each do |val|
-					projection_s[:"#{val}"] = 1
-				end
-				document = settings.mongo_db.find(:id => id).projection(projection_s).to_a.to_json
-			else
-				document = settings.mongo_db.find(:id => id).to_a.first
-				(document || {}).to_json
-			end
+			document = settings.mongo_db.find(:id => id).projection(result).to_a.to_json
 		end
 	end
  
 	def search_query params
 		results = Array.new
-		if params.nil?
-			{}.to_json
+		id = params[:id]
+		s_proj = fields_parse(params)
+		if s_proj.nil?
+			request.params.keys.each do |k|
+				document = settings.mongo_db.find({ "#{k}" => /#{request.params[k]}/}).to_a
+				results.push(document)
+			end
 		else
-			id = params[:id]
-			if params[:fields]
-				fields = Array(params[:fields].to_s.split(","))
-				projection_s = Hash.new
-				fields.each do |val|
-					projection_s[:"#{val}"] = 1
-				end
-				request.params.keys.each do |k|
-					document = settings.mongo_db.find({"#{k}" => /#{request.params[k]}/}).projection(projection_s).to_a
-					results.push(document)
-				end
-				results[0].to_json
-			else
-				request.params.keys.each do |k|
-					document = settings.mongo_db.find({ "#{k}" => /#{request.params[k]}/}).to_a
-					results.push(document)
-				end
-				results[0].to_json	
+			request.params.keys.each do |k|
+				document = settings.mongo_db.find({"#{k}" => /#{request.params[k]}/}).projection(s_proj).to_a
+				results.push(document)
 			end
 		end
+		results[0].to_json
 	end
 
 	def update_query params
@@ -84,6 +84,16 @@ helpers do
 	end
 end
 
+before '/:collection/*' do
+	pass if %w[collections].include? request.path_info.split('/')[1]
+	set_collection(params[:collection])
+end
+
+get '/collections/?' do
+	content_type :json
+	settings.db.database.collection_names.to_json
+end
+
 post '/:collection/new_record/?' do
 	content_type :json
 	set_collection(params[:collection])
@@ -92,38 +102,28 @@ post '/:collection/new_record/?' do
 	result = db.insert_one request.params 
 	redirect "http://127.0.0.1:4567/"+ params[:collection]+"/" + request.params[:id] +"/"
 end
- 
-get '/collections/?' do
-	content_type :json
-	settings.db.database.collection_names.to_json
-end
 
 get '/:collection/' do	
-	set_collection(params[:collection])
 	settings.mongo_db.find.to_a.to_json
 end 
- 
+
 get '/:collection/search/?' do
 	content_type :json
-	set_collection(params[:collection])
 	search_query(params)
 end
 
 get '/:collection/:id/?' do
 	content_type :json
-	set_collection(params[:collection])
 	profile_query(params)
 end
 
 put '/:collection/update/:id/?' do
 	content_type :json
-	set_collection(params[:collection])
 	update_query(params)
 end
  
 delete '/:collection/remove/:id/' do
 	content_type :json
-	set_collection(params[:collection])
 	db = settings.mongo_db
 	id = params[:id]
 	documents = db.find(:id => id)
