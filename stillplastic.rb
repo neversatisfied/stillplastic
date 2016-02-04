@@ -100,11 +100,8 @@ post '/:collection/new_record/?' do
 		attackers = []
 		json_s = JSON.parse request.body.read
 		json_s["results"].each do |attacker|
+			attacker["id'] = set_uuid()
 			attackers.push attacker
-		end
-		attackers.each do |attacker| 
-			attacker["id"] = set_uuid()
-			puts attacker
 		end
 		db.insert_many attackers
 		#result = []
