@@ -93,23 +93,20 @@ end
 post '/:collection/new_record/?' do
 	content_type :json
 	set_collection(params[:collection])
-	@collection = params[:collection]
 	db = settings.mongo_db
 	if request.params.empty?
-		puts "Body Bitch"
 		attackers = []
 		json_s = JSON.parse request.body.read
 		json_s["results"].each do |attacker|
-			attacker["id'] = set_uuid()
+			attacker["id"] = set_uuid()
 			attackers.push attacker
+			puts attacker
 		end
 		db.insert_many attackers
-		#result = []
-		attackers.to_json
+		attacker.to_json
 	else
-		puts "No Body Bitch"
 		request.params[:id] = set_uuid()
-		result = db.insert_one request.params	
+		db.insert_one request.params	
 		redirect "http://172.21.3.254:4567/" + params[:collection] + "/" + request.params[:id] +"/"
 	end
 	
