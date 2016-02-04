@@ -5,6 +5,8 @@ require 'sinatra'
 require 'json'
 require 'uuidtools'
 
+set :bind, '0.0.0.0'
+
 configure do
 	db = Mongo::Client.new(['127.0.0.1:27017'], :database => 'data')
 	set :db, db
@@ -12,6 +14,7 @@ end
 
 def set_uuid()
 	uuid = UUIDTools::UUID.random_create
+	uuid.to_s
 end
  
 helpers do
@@ -64,7 +67,7 @@ helpers do
 				results.push(document)
 			end
 		end
-		(results[0] || {}).to_json
+		(results[0].to_json || {}).to_json
 	end
 
 	def update_query params
@@ -72,7 +75,7 @@ helpers do
 		request.params.keys.each do |k|
 			settings.mongo_db.find(:id => id).update_one("$set" => { "#{k}" => "#{request.params[k]}"})
 		end
-		settings.mongo_db.find(:id => id).to_a.to_json
+		settings.mongo_db.find(:id => id).to_a.to_json	
 	end
 end
 
@@ -90,10 +93,29 @@ end
 post '/:collection/new_record/?' do
 	content_type :json
 	set_collection(params[:collection])
+	@collection = params[:collection]
 	db = settings.mongo_db
-	request.params[:id] = set_uuid()
-	result = db.insert_one request.params 
-	redirect "http://127.0.0.1:4567/"+ params[:collection]+"/" + request.params[:id] +"/"
+	if request.params.empty?
+		puts "Body Bitch"
+		attackers = []
+		json_s = JSON.parse request.body.read
+		json_s["results"].each do |attacker|
+			attackers.push attacker
+		end
+		attackers.each do |attacker| 
+			attacker["id"] = set_uuid()
+			puts attacker
+		end
+		db.insert_many attackers
+		#result = []
+		attackers.to_json
+	else
+		puts "No Body Bitch"
+		request.params[:id] = set_uuid()
+		result = db.insert_one request.params	
+		redirect "http://172.21.3.254:4567/" + params[:collection] + "/" + request.params[:id] +"/"
+	end
+	
 end
 
 get '/:collection/' do	
