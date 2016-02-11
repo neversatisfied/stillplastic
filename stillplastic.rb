@@ -11,7 +11,7 @@ configure do
 	set :db, db
 	set :bind, '0.0.0.0'
 	set :environment, 'production'
-	file = File.new("/home/ec2-user/stillplastic-master/logs/sinatra.log", 'a+')
+	file = File.new("~/stillplastic-master/logs/sinatra.log", 'a+')
 	file.sync = true
 	use Rack::CommonLogger, file
 end
