@@ -5,11 +5,15 @@ require 'sinatra'
 require 'json'
 require 'uuidtools'
 
-set :bind, '0.0.0.0'
 
 configure do
 	db = Mongo::Client.new(['127.0.0.1:27017'], :database => 'data')
 	set :db, db
+	set :bind, '0.0.0.0'
+	set :environment, 'production'
+	file = File.new("/home/ec2-user/stillplastic-master/logs/sinatra.log", 'a+')
+	file.sync = true
+	use Rack::CommonLogger, file
 end
 
 def set_uuid()
@@ -95,15 +99,21 @@ post '/:collection/new_record/?' do
 	set_collection(params[:collection])
 	db = settings.mongo_db
 	if request.params.empty?
-		attackers = []
+		request.body.rewind
 		json_s = JSON.parse request.body.read
-		json_s["results"].each do |attacker|
-			attacker["id"] = set_uuid()
-			attackers.push attacker
-			puts attacker
+		if json_s.has_key?("results")
+			attackers = []
+			json_s["results"].each do |attacker|
+				attacker["id"] = set_uuid()
+				attackers.push attacker
+				puts attacker
+			end
+			db.insert_many attackers
+		else
+			json_s["id"] = set_uuid()
+			db.insert_one json_s
+			json_s.to_json
 		end
-		db.insert_many attackers
-		attacker.to_json
 	else
 		request.params[:id] = set_uuid()
 		db.insert_one request.params	
