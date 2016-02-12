@@ -1,20 +1,26 @@
 #/usr/bin/ruby
- 
+
+
+
 require 'mongo'
 require 'sinatra'
 require 'json'
 require 'uuidtools'
+require 'rubygems'
+
 
 
 configure do
 	db = Mongo::Client.new(['127.0.0.1:27017'], :database => 'data')
 	set :db, db
+	set :port, 4567
 	set :bind, '0.0.0.0'
 	set :environment, 'production'
-	file = File.new("~/stillplastic-master/logs/sinatra.log", 'a+')
+	file = File.new("/var/log/sinatra.log", 'a+')
 	file.sync = true
 	use Rack::CommonLogger, file
 end
+
 
 def set_uuid()
 	uuid = UUIDTools::UUID.random_create
@@ -71,7 +77,8 @@ helpers do
 				results.push(document)
 			end
 		end
-		(results[0].to_json || {}).to_json
+		#new_doc = results[0].to_json
+		(results[0] || {}).to_json
 	end
 
 	def update_query params
@@ -112,8 +119,9 @@ post '/:collection/new_record/?' do
 		else
 			json_s["id"] = set_uuid()
 			db.insert_one json_s
-			json_s.to_json
+			json_s.to_json	
 		end
+
 	else
 		request.params[:id] = set_uuid()
 		db.insert_one request.params	
