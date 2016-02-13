@@ -14,7 +14,23 @@ http://127.0.0.1:4567/collection_name/route/?<options> if defined below
 You can use & to define more than one key:value in a request for any routes that show a key:value in them below
 
 	GET /collections/				returns a list of all available collections
-	GET /<collection>/search/?<key>=<value> 	
+	GET /<collection>/search/?<parameters>
+		Parameters allowed are: fields to search, condition to compare, and limit to return 
+			-Limit default to 50, specify 0 to return all documents that match
+			-Allowed conditions are:
+				$exists,(true|false)
+				$eq,(value)
+				$ne,(value)
+				$gt,(value)
+				$gte,(value)
+				$lt,(value)
+				$lte,(value)
+			Example query: http://127.0.0.1:4567/profiles/search/?q=hunter&condition=$exists,true&limit=0
+				-This would return all documents that have a field with a key of "hunter"
+				-If using the condition's option then it will ignore any comma separated values in the q parameter at this point in time
+			Example query: http://127.0.0.1:4567/profiles/search/?q=name,hunter
+				-This would return the first 50 docs with a key "name" and a value containing "hunter"
+
 	GET /<collection>/<id>/ 			returns all key:value pairs in the document
 	GET /<collection>/<id>/?fields=<comma,separated,values> where fields are the keys whose values you want returned from the document
 	GET /<collection>				returns all documents in collection

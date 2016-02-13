@@ -13,10 +13,10 @@ require 'rubygems'
 configure do
 	db = Mongo::Client.new(['127.0.0.1:27017'], :database => 'data')
 	set :db, db
-	set :port, 4567
+	set :port, 4667
 	set :bind, '0.0.0.0'
 	set :environment, 'production'
-	file = File.new("/var/log/sinatra.log", 'a+')
+	file = File.new("/var/log/sinatra_test.log", 'a+')
 	file.sync = true
 	use Rack::CommonLogger, file
 end
@@ -28,21 +28,37 @@ def set_uuid()
 end
  
 helpers do
-	def fields_parse(params)
-		if params.nil?
-			{}.to_json
+
+	def extract_limit params
+		if params.has_key?("limit")
+			limit = params[:limit].to_i
+			limit
 		else
-			id = params[:id]
-			if params[:fields]
-				fields = Array(params[:fields].to_s.split(","))
-				projection_s = Hash.new
-				fields.each do |val|
-					projection_s[val.to_sym] = 1
-				end
-				return projection_s	
+			limit = 50
+			limit
+		end
+	end
+	
+	def extract_query params 
+		if params.has_key?("q")
+			if params[:q].include? ","
+	 			query = Hash[*params[:q].split(',')]
 			else
-				return	
-			end
+				query = {}
+				query[params[:q]] = params[:q]
+				query
+			end 
+		else
+			nil
+		end
+	end
+	
+	def extract_condition params
+		if params.has_key?("condition")
+			condition = Array(params[:condition].split(','))
+			condition
+		else
+			nil
 		end
 	end
 
@@ -52,7 +68,7 @@ helpers do
 	
 	def profile_query params 
 		id = params[:id]
-		result = fields_parse(params)
+		result = extract_projection(params)
 		if result.nil?
 			document = settings.mongo_db.find(:id => id).to_a.first
 			(document || {}).to_json
@@ -63,22 +79,34 @@ helpers do
 	end
  
 	def search_query params
-		results = Array.new
-		id = params[:id]
-		s_proj = fields_parse(params)
-		if s_proj.nil?
-			request.params.keys.each do |k|
-				document = settings.mongo_db.find({ "#{k}" => /#{request.params[k]}/}).to_a
-				results.push(document)
-			end
+		#results = Array.new
+		if params.nil?
+			status 400
+			body "Invalid request, please refer to the API docs"
 		else
-			request.params.keys.each do |k|
-				document = settings.mongo_db.find({"#{k}" => /#{request.params[k]}/}).projection(s_proj).to_a
-				results.push(document)
+			field_query = extract_query(params)
+			lim = extract_limit(params)
+			cond_query = extract_condition(params)
+			if cond_query[0] == "$exists" && cond_query[1] == "true"
+				cond_val = 1
+			elsif cond_query[0] == "$exists" && cond_query[1] == "false"
+				cond_val = 0
+			else
+				puts "OTHER"
+				cond_val = cond_query[1]
+				
 			end
-		end
-		#new_doc = results[0].to_json
-		(results[0] || {}).to_json
+	
+			val = field_query.keys.first
+			new_l = cond_query[0]
+			if cond_query.nil?
+				results = settings.mongo_db.find(field_query).limit(lim).to_a	
+				(results || {}).to_json
+			else
+				results = settings.mongo_db.find( {val.to_sym => {new_l.to_sym => cond_val}}).to_a
+				(results || {}).to_json
+			end
+		end	
 	end
 
 	def update_query params
@@ -89,6 +117,7 @@ helpers do
 		settings.mongo_db.find(:id => id).to_a.to_json	
 	end
 end
+
 
 before '/:collection/*' do
 	pass if %w[collections].include? request.path_info.split('/')[1]
@@ -139,6 +168,7 @@ get '/:collection/search/?' do
 	content_type :json
 	search_query(params)
 end
+
 
 get '/:collection/:id/?' do
 	content_type :json
