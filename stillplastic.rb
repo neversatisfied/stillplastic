@@ -28,6 +28,19 @@ def set_uuid()
 end
  
 helpers do
+	
+	def extract_projection params
+		if params.has_key?("project")
+			temp_proj = Array(params[:project].to_s.split(","))
+			projection_s = Hash.new
+			temp_proj.each do |val|
+				projection_s[val.to_sym] = 1
+			end
+			return projection_s
+		else
+			return
+		end
+	end
 
 	def extract_limit params
 		if params.has_key?("limit")
