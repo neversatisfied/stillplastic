@@ -13,10 +13,10 @@ require 'rubygems'
 configure do
 	db = Mongo::Client.new(['127.0.0.1:27017'], :database => 'data')
 	set :db, db
-	set :port, 4667
+	set :port, 4567
 	set :bind, '0.0.0.0'
 	set :environment, 'production'
-	file = File.new("/var/log/sinatra_test.log", 'a+')
+	file = File.new("/var/log/sinatra.log", 'a+')
 	file.sync = true
 	use Rack::CommonLogger, file
 end
@@ -79,7 +79,6 @@ helpers do
 	end
  
 	def search_query params
-		#results = Array.new
 		if params.nil?
 			status 400
 			body "Invalid request, please refer to the API docs"
