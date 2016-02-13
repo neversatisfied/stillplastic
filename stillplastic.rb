@@ -79,29 +79,31 @@ helpers do
 	end
  
 	def search_query params
+		#results = Array.new
 		if params.nil?
 			status 400
 			body "Invalid request, please refer to the API docs"
 		else
 			field_query = extract_query(params)
+			puts field_query
 			lim = extract_limit(params)
 			cond_query = extract_condition(params)
-			if cond_query[0] == "$exists" && cond_query[1] == "true"
-				cond_val = 1
-			elsif cond_query[0] == "$exists" && cond_query[1] == "false"
-				cond_val = 0
-			else
-				puts "OTHER"
-				cond_val = cond_query[1]
-				
-			end
-	
+			
 			val = field_query.keys.first
-			new_l = cond_query[0]
 			if cond_query.nil?
 				results = settings.mongo_db.find(field_query).limit(lim).to_a	
 				(results || {}).to_json
 			else
+				new_l = cond_query[0]
+				if cond_query[0] == "$exists" && cond_query[1] == "true"
+					cond_val = 1
+				elsif cond_query[0] == "$exists" && cond_query[1] == "false"
+					cond_val = 0
+				else
+					cond_val = cond_query[1]
+					
+				end
+
 				results = settings.mongo_db.find( {val.to_sym => {new_l.to_sym => cond_val}}).to_a
 				(results || {}).to_json
 			end
