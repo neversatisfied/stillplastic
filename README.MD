@@ -30,7 +30,8 @@ You can use & to define more than one key:value in a request for any routes that
 				-If using the condition's option then it will ignore any comma separated values in the q parameter at this point in time
 			Example query: http://127.0.0.1:4567/profiles/search/?q=name,hunter
 				-This would return the first 50 docs with a key "name" and a value containing "hunter"
-
+	
+	GET /<collection>/recent/<count>/		returns the latest X documents, defined by count 
 	GET /<collection>/<id>/ 			returns all key:value pairs in the document
 	GET /<collection>/<id>/?fields=<comma,separated,values> where fields are the keys whose values you want returned from the document
 	GET /<collection>				returns all documents in collection

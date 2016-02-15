@@ -92,7 +92,6 @@ helpers do
 	end
  
 	def search_query params
-		#results = Array.new
 		if params.nil?
 			status 400
 			body "Invalid request, please refer to the API docs"
@@ -177,6 +176,12 @@ get '/:collection/' do
 	document = settings.mongo_db.find.to_a
 	(document || {}).to_json
 end 
+
+get '/:collection/recent/:count/' do
+	document = settings.mongo_db.find.limit(params[:count].to_i).sort(:_id => -1).to_a
+	puts document.to_json
+	(document || {}).to_json
+end
 
 get '/:collection/search/?' do
 	content_type :json
