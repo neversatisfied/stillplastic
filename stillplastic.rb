@@ -28,6 +28,16 @@ def set_uuid()
 end
  
 helpers do
+
+	def extract_count params
+		if params.has_key?("count")
+			temp_count = 1 
+		else
+			temp_count = 0
+		end
+		return temp_count	
+
+	end
 	
 	def extract_projection params
 		if params.has_key?("project")
@@ -47,7 +57,7 @@ helpers do
 			limit = params[:limit].to_i
 			limit
 		else
-			limit = 50
+			limit = 0
 			limit
 		end
 	end
@@ -100,11 +110,9 @@ helpers do
 			puts field_query
 			lim = extract_limit(params)
 			cond_query = extract_condition(params)
-			
 			val = field_query.keys.first
 			if cond_query.nil?
 				results = settings.mongo_db.find(field_query).limit(lim).to_a	
-				(results || {}).to_json
 			else
 				new_l = cond_query[0]
 				if cond_query[0] == "$exists" && cond_query[1] == "true"
@@ -116,9 +124,19 @@ helpers do
 					
 				end
 
-				results = settings.mongo_db.find( {val.to_sym => {new_l.to_sym => cond_val}}).to_a
-				(results || {}).to_json
+				results = settings.mongo_db.find( {val.to_sym => {new_l.to_sym => cond_val}}).limit(lim).to_a
 			end
+
+			if extract_count(params).nil?
+				(results || {}).to_json
+			else
+				i_count = Hash.new
+				i_count["count"] = results.count().to_s 	
+				results.unshift(i_count)
+				(results || {}).to_json
+				
+			end
+
 		end	
 	end
 
@@ -176,6 +194,11 @@ get '/:collection/' do
 	document = settings.mongo_db.find.to_a
 	(document || {}).to_json
 end 
+
+get '/:collection/count/' do
+	document = settings.mongo_db.find.count()
+	(document || {}).to_json
+end
 
 get '/:collection/recent/:count/' do
 	document = settings.mongo_db.find.limit(params[:count].to_i).sort(:_id => -1).to_a

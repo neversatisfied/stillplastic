@@ -16,7 +16,8 @@ You can use & to define more than one key:value in a request for any routes that
 	GET /collections/				returns a list of all available collections
 	GET /<collection>/search/?<parameters>
 		Parameters allowed are: fields to search, condition to compare, and limit to return 
-			-Limit default to 50, specify 0 to return all documents that match
+			-Limit default to 0, which is all matching documents. Be sure to specify a limit if you only want to test something
+			-Count, optional parameter. If added it takes no arguments, and will return a json object of {count:<count>} with the total number of records returned
 			-Allowed conditions are:
 				$exists,(true|false)
 				$eq,(value)
