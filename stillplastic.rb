@@ -72,7 +72,7 @@ helpers do
 			status 400
 			body "Invalid request, please refer to the API docs"
 		else
-			count = extract_count(params)
+			
 			lim = extract_limit(params)
 			temp_q = extract_query(params)
 			s_proj = extract_projection(params)
