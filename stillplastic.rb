@@ -33,16 +33,6 @@ helpers do
 	def set_collection coll	
 		Sinatra::Base.set :mongo_db, settings.db[:"#{coll}"]				
 	end
-
-	def extract_count params
-		if params.has_key?("count")
-			temp_count = 1 
-		else
-			temp_count = 0
-		end
-		return temp_count	
-
-	end
 	
 	def extract_projection params
 		if params.has_key?("project")
