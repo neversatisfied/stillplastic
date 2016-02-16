@@ -3,7 +3,7 @@ A Ruby+Sinatra+Mongo metadata collection framework
 
 
 
-You will need to install Sinatra and Mongo gems: gem install sinatra mongo
+You will need to install Sinatra and Mongo and Thin(webserver) gems: gem install sinatra mongo thin
 
 You will need to have a Mongodb instance running with a collection already created. Edit the collection name in the source code to whatever yours is called, default is profiles as this was started with OSINT in mind.
 
