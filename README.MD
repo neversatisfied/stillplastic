@@ -14,24 +14,48 @@ http://127.0.0.1:4567/collection_name/route/?<options> if defined below
 You can use & to define more than one key:value in a request for any routes that show a key:value in them below
 
 	GET /collections/				returns a list of all available collections
-	GET /<collection>/search/?<parameters>
+	GET /<collection>/search/?q=<mongodb query>&<optional parameters>
 		Parameters allowed are: fields to search, condition to compare, and limit to return 
-			-Limit default to 0, which is all matching documents. Be sure to specify a limit if you only want to test something
-			-Count, optional parameter. If added it takes no arguments, and will return a json object of {count:<count>} with the total number of records returned
-			-Allowed conditions are:
-				$exists,(true|false)
-				$eq,(value)
-				$ne,(value)
-				$gt,(value)
-				$gte,(value)
-				$lt,(value)
-				$lte,(value)
-			Example query: http://127.0.0.1:4567/profiles/search/?q=hunter&condition=$exists,true&limit=0
-				-This would return all documents that have a field with a key of "hunter"
-				-If using the condition's option then it will ignore any comma separated values in the q parameter at this point in time
-			Example query: http://127.0.0.1:4567/profiles/search/?q=name,hunter
-				-This would return the first 50 docs with a key "name" and a value containing "hunter"
+			
+		Optional Parameters:
+			&limit=X		limits results to X
+			&project=Z,A		returns only fields with key name matching Z and A for the query
+			
+
+		-Limit defaults to 0, which is all matching documents. Be sure to specify a limit if you have a loosely defined query so as to not stress the DB
+		-The query must be in the proper mongodb query format, no spaces and "" around all keys/values.
+		-Projection by default has the _id field set to 0, which doesn't return it. If you would like the _id field then add _id to the projection arguments
+		
 	
+		{"<one>": "<one.five>" {"two": "three"}, {"four": "five"}}&option1&option2&option3
+			This is the basic synatx, where:
+				<one> is a key name, or a logical operator https://docs.mongodb.org/v3.0/reference/operator/query/#logical
+				<one.five> is the key value, if your using any further refinements to the query then skip this field and go straight to two
+				<two> is a query selector, https://docs.mongodb.org/v3.0/reference/operator/query/#query-selectors or an element https://docs.mongodb.org/v3.0/reference/operator/query/#element or an evaluation https://docs.mongodb.org/v3.0/reference/operator/query/#evaluation
+				<three> is the value the query selector or element is being compared too
+				<four> & <five> optional values, only used if performing a logical operation (check examples below)
+		Examples:
+			{"name":"test"}
+			{"name":"test"}
+				This would return all documents with a field "name" whose value is "test". 
+				SQL equivalent: Select name, test from COLLECTION where name = "test";
+			{"$or":{"name":"test"},{"name","bob"}}
+				This would return all documents with a field "name" whose value is either "test" or "bob"
+				SQL equivalent: Select * from COLLECTION where name = "test" OR name = "bob";
+			{name: {"$regex": /test/}}
+			{"name":{"$regex":"test"}}
+				This would return all documents with a field "name" that contain the value "test"
+					-So test, testme, iamatest, please dont test, would all be returned
+				SQL equivalent: Select * from COLLECTION where name LIKE "test";
+			{"name":{"$regex":"^(?:(?!test).)*$","$options":"m"}}&project=server
+				This would return all documents with a field where the name does not containt the value "test"
+				SQL equivalent: Select * from COCLLECTION where name !LIKE "test";
+					-you must have the $options:m portion to do not matching regex, maybe in the future I will build this into a function to make it easier to query
+			{"name":{"$ne":"test"}}
+				This would return all documents where the field "name" do not equal "test"
+					-test would not be returned, however testme would still count.
+
+
 	GET /<collection>/recent/<count>/		returns the latest X documents, defined by count 
 	GET /<collection>/<id>/ 			returns all key:value pairs in the document
 	GET /<collection>/<id>/?fields=<comma,separated,values> where fields are the keys whose values you want returned from the document

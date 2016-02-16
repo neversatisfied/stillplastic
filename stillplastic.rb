@@ -7,7 +7,7 @@ require 'sinatra'
 require 'json'
 require 'uuidtools'
 require 'rubygems'
-
+require 'webrick/httputils'
 
 
 configure do
@@ -22,12 +22,17 @@ configure do
 end
 
 
+
 def set_uuid()
 	uuid = UUIDTools::UUID.random_create
 	uuid.to_s
 end
  
 helpers do
+
+	def set_collection coll	
+		Sinatra::Base.set :mongo_db, settings.db[:"#{coll}"]				
+	end
 
 	def extract_count params
 		if params.has_key?("count")
@@ -43,6 +48,7 @@ helpers do
 		if params.has_key?("project")
 			temp_proj = Array(params[:project].to_s.split(","))
 			projection_s = Hash.new
+			projection_s[:_id] = 0
 			temp_proj.each do |val|
 				projection_s[val.to_sym] = 1
 			end
@@ -62,31 +68,35 @@ helpers do
 		end
 	end
 	
-	def extract_query params 
-		if params.has_key?("q")
-			if params[:q].include? ","
-	 			query = Hash[*params[:q].split(',')]
+	def extract_query params
+		if params[:q]
+			query = JSON.parse(params[:q])
+			query
+		else
+			nil
+		end
+	end
+ 	
+	def build_query params
+		if params.nil?
+			status 400
+			body "Invalid request, please refer to the API docs"
+		else
+			count = extract_count(params)
+			lim = extract_limit(params)
+			temp_q = extract_query(params)
+			s_proj = extract_projection(params)
+			if s_proj.nil?
+				results = settings.mongo_db.find(temp_q).limit(lim).to_a
+			
 			else
-				query = {}
-				query[params[:q]] = params[:q]
-				query
-			end 
-		else
-			nil
-		end
-	end
-	
-	def extract_condition params
-		if params.has_key?("condition")
-			condition = Array(params[:condition].split(','))
-			condition
-		else
-			nil
-		end
-	end
-
-	def set_collection coll	
-		Sinatra::Base.set :mongo_db, settings.db[:"#{coll}"]				
+				results = settings.mongo_db.find(temp_q).projection(s_proj).limit(lim).to_a
+			end
+			i_count = Hash.new
+                        i_count["count"] = results.count().to_s
+			results.unshift(i_count)
+			(results || {}).to_json	
+		end	
 	end
 	
 	def profile_query params 
@@ -100,46 +110,8 @@ helpers do
 			(document || {}).to_json
 		end
 	end
- 
-	def search_query params
-		if params.nil?
-			status 400
-			body "Invalid request, please refer to the API docs"
-		else
-			field_query = extract_query(params)
-			puts field_query
-			lim = extract_limit(params)
-			cond_query = extract_condition(params)
-			val = field_query.keys.first
-			if cond_query.nil?
-				results = settings.mongo_db.find(field_query).limit(lim).to_a	
-			else
-				new_l = cond_query[0]
-				if cond_query[0] == "$exists" && cond_query[1] == "true"
-					cond_val = 1
-				elsif cond_query[0] == "$exists" && cond_query[1] == "false"
-					cond_val = 0
-				else
-					cond_val = cond_query[1]
-					
-				end
-
-				results = settings.mongo_db.find( {val.to_sym => {new_l.to_sym => cond_val}}).limit(lim).to_a
-			end
-
-			if extract_count(params).nil?
-				(results || {}).to_json
-			else
-				i_count = Hash.new
-				i_count["count"] = results.count().to_s 	
-				results.unshift(i_count)
-				(results || {}).to_json
-				
-			end
-
-		end	
-	end
-
+	
+	
 	def update_query params
 		id = params[:id]
 		request.params.keys.each do |k|
@@ -148,7 +120,6 @@ helpers do
 		settings.mongo_db.find(:id => id).to_a.to_json	
 	end
 end
-
 
 before '/:collection/*' do
 	pass if %w[collections].include? request.path_info.split('/')[1]
@@ -206,9 +177,9 @@ get '/:collection/recent/:count/' do
 	(document || {}).to_json
 end
 
-get '/:collection/search/?' do
+get '/:collection/search/?*' do
 	content_type :json
-	search_query(params)
+	build_query(params)
 end
 
 
